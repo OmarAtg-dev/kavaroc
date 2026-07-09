@@ -58,7 +58,35 @@ You can upload your product images, logo, and video directly from the page — n
 | How it works | "كيفاش كيخدم" section |
 | Washable | "قابل للغسل" section |
 
-All files are stored in **IndexedDB** (your browser, no server). Customers never see the upload UI — it's behind the admin password.
+## 📤 Production Deployment Workflow
+
+**Important:** Files uploaded via the media manager are stored in **IndexedDB** (your browser only). They are NOT visible to customers on the deployed site. To make them visible to everyone:
+
+1. **Upload your media** through the media manager (in your browser)
+2. **Click "تصدير للمشروع"** in the media manager header
+3. **Extract the downloaded ZIP** into `public/media/`
+   - Files are named like: `media/logo.svg`, `media/hero-main.jpg`, etc.
+4. **Rebuild:** `npm run build`
+5. **Commit and push:**
+   ```bash
+   git add public/media/
+   git commit -m "Add product media"
+   git push
+   ```
+6. **Deploy** (Vercel/Netlify auto-deploys from GitHub)
+
+After this, the media is part of the static build and served to **all visitors on all devices** — no reuploading needed, works across browsers.
+
+**Where files go:**
+- `public/media/logo.svg`
+- `public/media/hero-main.jpg`
+- `public/media/hero-video.mp4`
+- `public/media/gallery-1.jpg`, `gallery-2.jpg`, `gallery-3.jpg`, `gallery-4.jpg`
+- `public/media/solution-result.jpg`
+- `public/media/how-it-works.jpg`
+- `public/media/washable.jpg`
+
+The system checks for files in `public/media/` first, then falls back to your browser's IndexedDB. So you can iterate quickly in dev (using the upload UI) and ship to production (using static files in `public/media/`).
 
 ## ✏️ Customization
 

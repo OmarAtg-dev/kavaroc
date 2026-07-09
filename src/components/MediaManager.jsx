@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Upload, Trash2, Image as ImageIcon, Video, ImagePlus, Check } from "lucide-react";
+import { X, Upload, Trash2, Image as ImageIcon, Video, ImagePlus, Check, Download, ExternalLink } from "lucide-react";
 import { mediaSlots } from "../lib/mediaSlots";
 import { useMediaActions } from "../context/MediaContext";
+import ExportModal from "./ExportModal";
 
 function formatSize(bytes) {
   if (!bytes) return "";
@@ -68,9 +69,20 @@ function MediaSlot({ slot, current, onSave, onRemove, saving, error }) {
               )}
             </div>
             <div className="flex items-center justify-between gap-2 border-t border-ink-100 bg-white p-2">
-              <span className="truncate text-[10px] text-ink-500">
-                {current.type} · {formatSize(current.size)}
-              </span>
+              <div className="flex flex-col">
+                <span className="truncate text-[10px] text-ink-500">
+                  {current.type}
+                </span>
+                {current.source === "static" ? (
+                  <span className="text-[10px] font-bold text-brand-600">
+                    ✓ محفوظ فـ public/media
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold text-amber-600">
+                    ⚠ محلي فقط — صدّر قبل النشر
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-1">
                 <button
                   type="button"
@@ -79,14 +91,20 @@ function MediaSlot({ slot, current, onSave, onRemove, saving, error }) {
                 >
                   بدّل
                 </button>
-                <button
-                  type="button"
-                  onClick={() => onRemove(slot.id)}
-                  className="grid h-7 w-7 place-items-center rounded-full bg-red-50 text-red-600 transition-colors hover:bg-red-100"
-                  aria-label="حذف"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
+                {current.source === "static" ? (
+                  <span className="rounded-full bg-ink-100 px-2.5 py-1 text-[10px] font-bold text-ink-500">
+                    محمي
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onRemove(slot.id)}
+                    className="grid h-7 w-7 place-items-center rounded-full bg-red-50 text-red-600 transition-colors hover:bg-red-100"
+                    aria-label="حذف"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -139,6 +157,11 @@ export default function MediaManager({ open, onClose }) {
   const { save, remove, loaded, media } = useMediaActions();
   const [savingSlots, setSavingSlots] = useState({});
   const [errors, setErrors] = useState({});
+  const [exportOpen, setExportOpen] = useState(false);
+
+  useEffect(() => {
+    if (!open) setExportOpen(false);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -198,13 +221,23 @@ export default function MediaManager({ open, onClose }) {
                   {uploadedCount} / {mediaSlots.length} مرفوع · الصور والفيديو كيتسجلو فـ المتصفح ديالك
                 </p>
               </div>
-              <button
-                onClick={onClose}
-                className="grid h-9 w-9 place-items-center rounded-full text-ink-500 hover:bg-ink-50"
-                aria-label="إغلاق"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setExportOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-brand-500 px-3 py-1.5 text-xs font-bold text-white shadow-glow transition-all hover:bg-brand-600"
+                  title="صدّر الصور إلى public/media/ باش تنحفظ فـ المشروع"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  تصدير للمشروع
+                </button>
+                <button
+                  onClick={onClose}
+                  className="grid h-9 w-9 place-items-center rounded-full text-ink-500 hover:bg-ink-50"
+                  aria-label="إغلاق"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4">
@@ -229,12 +262,13 @@ export default function MediaManager({ open, onClose }) {
               )}
 
               <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                💡 <strong>نصيحة:</strong> استعمل صور بمقاس 1:1 (مربع) باش يبانو مزيان فالمعرض. الفيديو خاصو يكون قصير (10-30 ثانية).
+                💡 <strong>قبل النشر:</strong> اضغط على <strong>"تصدير للمشروع"</strong> باش تنزّل ZIP فيه كل الصور، ثم ضعهم فـ <code className="rounded bg-amber-100 px-1">public/media/</code> قبل ما تدير deploy. هكدا كتشوفهم جميع الزبناء، ماشي غير أنت.
               </div>
             </div>
           </motion.div>
         </motion.div>
       )}
+      <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} />
     </AnimatePresence>
   );
 }

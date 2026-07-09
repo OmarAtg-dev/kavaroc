@@ -1,8 +1,38 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import * as mediaDB from "../lib/mediaDB";
 import { mediaSlots } from "../lib/mediaSlots";
+import { getStaticMediaPath, getStaticMediaType } from "../config/mediaManifest";
 
 const MediaContext = createContext(null);
+
+async function probeStaticMedia(slot, path) {
+  try {
+    const res = await fetch(path, { method: "HEAD" });
+    if (!res.ok) return null;
+    return {
+      url: path,
+      type: getStaticMediaType(slot) || res.headers.get("content-type") || "image/jpeg",
+      source: "static",
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function getIndexedMedia(slot) {
+  try {
+    const blob = await mediaDB.getMedia(slot);
+    if (!blob) return null;
+    return {
+      url: URL.createObjectURL(blob),
+      type: blob.type,
+      size: blob.size,
+      source: "indexed",
+    };
+  } catch {
+    return null;
+  }
+}
 
 export function MediaProvider({ children }) {
   const [media, setMedia] = useState({});
@@ -16,19 +46,19 @@ export function MediaProvider({ children }) {
     (async () => {
       const newMedia = {};
       for (const slot of mediaSlots) {
-        try {
-          const blob = await mediaDB.getMedia(slot.id);
-          if (blob && !cancelled) {
-            const url = URL.createObjectURL(blob);
-            objectUrls.push(url);
-            newMedia[slot.id] = {
-              url,
-              type: blob.type,
-              size: blob.size,
-            };
+        const staticPath = getStaticMediaPath(slot.id);
+        if (staticPath) {
+          const probe = await probeStaticMedia(slot.id, staticPath);
+          if (probe && !cancelled) {
+            newMedia[slot.id] = probe;
+            continue;
           }
-        } catch {
-          // skip slot
+        }
+
+        const indexed = await getIndexedMedia(slot.id);
+        if (indexed && !cancelled) {
+          objectUrls.push(indexed.url);
+          newMedia[slot.id] = indexed;
         }
       }
       if (!cancelled) {
@@ -45,16 +75,30 @@ export function MediaProvider({ children }) {
 
   const save = useCallback(async (slot, file) => {
     await mediaDB.saveMedia(slot, file);
+    try {
+      const list = JSON.parse(localStorage.getItem("kavaroc_media_slots") || "[]");
+      if (!list.includes(slot)) {
+        list.push(slot);
+        localStorage.setItem("kavaroc_media_slots", JSON.stringify(list));
+      }
+    } catch {}
     setTick((t) => t + 1);
   }, []);
 
   const remove = useCallback(async (slot) => {
     await mediaDB.deleteMedia(slot);
+    try {
+      const list = JSON.parse(localStorage.getItem("kavaroc_media_slots") || "[]");
+      const next = list.filter((s) => s !== slot);
+      localStorage.setItem("kavaroc_media_slots", JSON.stringify(next));
+    } catch {}
     setTick((t) => t + 1);
   }, []);
 
+  const refresh = useCallback(() => setTick((t) => t + 1), []);
+
   return (
-    <MediaContext.Provider value={{ media, save, remove, loaded, refresh: () => setTick((t) => t + 1) }}>
+    <MediaContext.Provider value={{ media, save, remove, loaded, refresh }}>
       {children}
     </MediaContext.Provider>
   );
