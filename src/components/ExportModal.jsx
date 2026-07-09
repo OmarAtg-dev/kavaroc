@@ -54,24 +54,25 @@ export default function ExportModal({ open, onClose }) {
     return "jpg";
   };
 
-  const getPath = (slotId, type) => {
-    const ext = getExt(type);
-    if (slotId === "logo") return `media/logo.svg`;
-    if (slotId === "hero-main") return `media/hero-main.jpg`;
-    if (slotId === "hero-video") return `media/hero-video.mp4`;
-    if (slotId.startsWith("gallery-")) return `media/gallery-${slotId.split("-")[1]}.jpg`;
-    if (slotId === "solution-result") return `media/solution-result.jpg`;
-    if (slotId === "how-it-works") return `media/how-it-works.jpg`;
-    if (slotId === "washable") return `media/washable.jpg`;
-    return `media/${slotId}.${ext}`;
+  const getFilename = (slotId, type) => {
+    if (slotId === "logo") return `logo.svg`;
+    if (slotId === "hero-main") return `hero-main.jpg`;
+    if (slotId === "hero-video") return `hero-video.mp4`;
+    if (slotId.startsWith("gallery-")) return `gallery-${slotId.split("-")[1]}.jpg`;
+    if (slotId === "solution-result") return `solution-result.jpg`;
+    if (slotId === "how-it-works") return `how-it-works.jpg`;
+    if (slotId === "washable") return `washable.jpg`;
+    return `${slotId}.${getExt(type)}`;
   };
+
+  const getPublicPath = (slotId, type) => `/media/${getFilename(slotId, type)}`;
 
   const buildManifest = () => {
     const manifest = {
       generatedAt: new Date().toISOString(),
       files: items.map((it) => ({
         slot: it.slotId,
-        path: getPath(it.slotId, it.type),
+        path: getPublicPath(it.slotId, it.type),
         type: it.type,
         size: it.blob.size,
       })),
@@ -85,8 +86,8 @@ export default function ExportModal({ open, onClose }) {
     try {
       const zip = new JSZip();
       for (const it of items) {
-        const fullPath = getPath(it.slotId, it.type);
-        zip.file(fullPath, it.blob);
+        const filename = getFilename(it.slotId, it.type);
+        zip.file(filename, it.blob);
       }
       zip.file("MANIFEST.json", buildManifest());
 
@@ -170,7 +171,7 @@ export default function ExportModal({ open, onClose }) {
                     {items.map((it) => (
                       <li key={it.slotId} className="flex items-center justify-between">
                         <code className="text-ink-700">
-                          {getPath(it.slotId, it.type)}
+                          public/media/{getFilename(it.slotId, it.type)}
                         </code>
                         <span className="text-ink-500">
                           {(it.blob.size / 1024).toFixed(0)} KB
@@ -200,8 +201,8 @@ export default function ExportModal({ open, onClose }) {
                   <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] text-amber-800">
                     <strong>بعد التصدير:</strong>
                     <ol className="ms-4 mt-1 list-decimal space-y-0.5">
-                      <li>فك ضغط الـ ZIP</li>
-                      <li>انسخ محتواه داخل <code>public/media/</code></li>
+                      <li>فك ضغط الـ ZIP مباشرة داخل <code>public/media/</code></li>
+                      <li>الملفات خاصهم يبانو بحال: <code>public/media/logo.svg</code></li>
                       <li>شغّل <code>npm run build</code></li>
                       <li>ارفع التغييرات على Git ودير deploy</li>
                     </ol>
