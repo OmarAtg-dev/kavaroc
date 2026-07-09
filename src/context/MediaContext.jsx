@@ -1,23 +1,9 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import * as mediaDB from "../lib/mediaDB";
 import { mediaSlots } from "../lib/mediaSlots";
-import { getStaticMediaPath, getStaticMediaType } from "../config/mediaManifest";
+import { MEDIA_MANIFEST } from "virtual:media-manifest";
 
 const MediaContext = createContext(null);
-
-async function probeStaticMedia(slot, path) {
-  try {
-    const res = await fetch(path, { method: "HEAD" });
-    if (!res.ok) return null;
-    return {
-      url: path,
-      type: getStaticMediaType(slot) || res.headers.get("content-type") || "image/jpeg",
-      source: "static",
-    };
-  } catch {
-    return null;
-  }
-}
 
 async function getIndexedMedia(slot) {
   try {
@@ -46,13 +32,14 @@ export function MediaProvider({ children }) {
     (async () => {
       const newMedia = {};
       for (const slot of mediaSlots) {
-        const staticPath = getStaticMediaPath(slot.id);
-        if (staticPath) {
-          const probe = await probeStaticMedia(slot.id, staticPath);
-          if (probe && !cancelled) {
-            newMedia[slot.id] = probe;
-            continue;
-          }
+        const staticInfo = MEDIA_MANIFEST?.slots?.[slot.id];
+        if (staticInfo?.exists) {
+          newMedia[slot.id] = {
+            url: staticInfo.url,
+            type: staticInfo.type,
+            source: "static",
+          };
+          continue;
         }
 
         const indexed = await getIndexedMedia(slot.id);
